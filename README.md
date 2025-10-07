@@ -1,5 +1,22 @@
 # fast-backend
 
+Boilerplate for a production-grade FastAPI backend. See [boilerplate-backend-vps](https://github.com/yannmazita/boilerplate-backend-vps) for a fitting Hetzner/GCS infrastructure boilerplate.
+
+## Features
+
+- FastAPI backend
+- JWT tokens for route protection
+- Token refresh
+- Google OAuth integration
+- Apple OAuth integration (not tested)
+- PostgreSQL database (async access via asyncpg)
+- Full OAuth authorization module
+- Straight-forward configuration in src.common.utils.settings and in non-commited .env file
+
+## Todo
+
+- Internal account registration using external mail service
+
 ## Getting Started
 
 ### Prerequisites

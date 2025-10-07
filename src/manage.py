@@ -29,7 +29,9 @@ async def cleanup_main():
         # Cleanup inactive guest accounts
         inactive_guests = await cleanup_service.get_inactive_guest_accounts()
         if inactive_guests:
-            logger.info(f"Found {len(inactive_guests)} inactive guest accounts to delete.")
+            logger.info(
+                f"Found {len(inactive_guests)} inactive guest accounts to delete."
+            )
             for user in inactive_guests:
                 await cleanup_service.delete_user(user)
         else:
@@ -38,18 +40,14 @@ async def cleanup_main():
         # Cleanup disabled accounts
         disabled_accounts = await cleanup_service.get_disabled_accounts_for_cleanup()
         if disabled_accounts:
-            logger.info(
-                f"Found {len(disabled_accounts)} disabled accounts to delete."
-            )
+            logger.info(f"Found {len(disabled_accounts)} disabled accounts to delete.")
             for user in disabled_accounts:
                 await cleanup_service.delete_user(user)
         else:
             logger.info("No disabled accounts to delete.")
 
         # Cleanup inactive registered accounts
-        inactive_registered = (
-            await cleanup_service.get_inactive_registered_accounts()
-        )
+        inactive_registered = await cleanup_service.get_inactive_registered_accounts()
         if inactive_registered:
             logger.info(
                 f"Found {len(inactive_registered)} inactive registered accounts to delete."
@@ -70,38 +68,40 @@ def cleanup_users():
     logger.info("User cleanup process finished.")
 
 
-async def clear_sessions_main():
-    sessionmanager.__init__(
-        settings.async_postgres_base_url.unicode_string(),
-        {"echo": settings.postgres_echo},
-    )
-    async with sessionmanager.session() as session:
-        logger.info("Deleting all records from game_sessions table...")
-        await session.execute(text("DELETE FROM game_sessions"))
-        await session.commit()
-        logger.info("All game sessions have been cleared.")
-
-
-@app.command()
-def clear_all_game_sessions(
-    yes: bool = typer.Option(
-        False,
-        "--yes",
-        "-y",
-        help="Skip confirmation prompt.",
-    )
-):
-    """
-    Deletes every single game session from the database.
-    """
-    if yes or typer.confirm(
-        "Are you sure you want to delete all game sessions? This action is irreversible."
-    ):
-        logger.info("Starting process to clear all game sessions...")
-        asyncio.run(clear_sessions_main())
-        logger.info("Finished clearing all game sessions.")
-    else:
-        logger.info("Operation cancelled.")
+# Example cleanup functions
+#
+# async def clear_sessions_main():
+#    sessionmanager.__init__(
+#        settings.async_postgres_base_url.unicode_string(),
+#        {"echo": settings.postgres_echo},
+#    )
+#    async with sessionmanager.session() as session:
+#        logger.info("Deleting all records from game_sessions table...")
+#        await session.execute(text("DELETE FROM game_sessions"))
+#        await session.commit()
+#        logger.info("All game sessions have been cleared.")
+#
+#
+# @app.command()
+# def clear_all_game_sessions(
+#    yes: bool = typer.Option(
+#        False,
+#        "--yes",
+#        "-y",
+#        help="Skip confirmation prompt.",
+#    )
+# ):
+#    """
+#    Deletes every single game session from the database.
+#    """
+#    if yes or typer.confirm(
+#        "Are you sure you want to delete all game sessions? This action is irreversible."
+#    ):
+#        logger.info("Starting process to clear all game sessions...")
+#        asyncio.run(clear_sessions_main())
+#        logger.info("Finished clearing all game sessions.")
+#    else:
+#        logger.info("Operation cancelled.")
 
 
 if __name__ == "__main__":
