@@ -14,12 +14,25 @@ logger = structlog.get_logger(__name__)
 
 
 class GCSClient:
-    """
-    A client for interacting with Google Cloud Storage.
-    This class is designed to be used as a FastAPI dependency.
+    """A client for interacting with Google Cloud Storage (GCS).
+
+    This class provides methods for generating signed URLs and managing
+    objects in a GCS bucket. It can be configured to use impersonated
+    credentials for enhanced security.
+
+    Attributes:
+        client: The authenticated `google.cloud.storage.Client` instance.
+        bucket_name: The name of the GCS bucket to interact with.
+        bucket: The `google.cloud.storage.Bucket` object.
     """
 
     def __init__(self):
+        """Initializes the GCSClient.
+
+        Sets up the GCS client, using impersonated service account
+        credentials if `gcs_signer_service_account_email` is set in the
+        application settings.
+        """
         # Use impersonated credentials if a signer email is provided
         credentials = None
         if settings.gcs_signer_service_account_email:
@@ -32,9 +45,7 @@ class GCSClient:
             credentials = ImpersonatedCredentials(
                 source_credentials=source_credentials,
                 target_principal=settings.gcs_signer_service_account_email,
-                target_scopes=[
-                    "https://www.googleapis.com/auth/devstorage.read_write"
-                ],
+                target_scopes=["https://www.googleapis.com/auth/devstorage.read_write"],
             )
         else:
             logger.warning(
@@ -49,18 +60,14 @@ class GCSClient:
         logger.info(f"GCS client initialized for bucket '{self.bucket_name}'.")
 
     def generate_upload_presigned_url(self, blob_name: str, content_type: str) -> str:
-        """
-        Generates a V4 presigned URL for uploading a file (PUT request).
+        """Generates a V4 presigned URL for uploading a file via PUT.
 
         Args:
-            blob_name: The full path of the object in the GCS bucket.
+            blob_name: The full path for the object in the GCS bucket.
             content_type: The MIME type of the file to be uploaded.
 
         Returns:
-            The presigned URL for the PUT request.
-
-        Raises:
-            AppException: If URL generation fails.
+            The V4 presigned URL.
         """
         blob = self.bucket.blob(blob_name)
         # V4 signed URLs are the recommended version.
@@ -74,14 +81,10 @@ class GCSClient:
         return url
 
     def delete_blob(self, blob_name: str):
-        """
-        Deletes a blob from the GCS bucket.
+        """Deletes a blob from the GCS bucket.
 
         Args:
-            blob_name: The full path of the object in the GCS bucket.
-
-        Raises:
-            AppException: If the blob deletion fails for reasons other than not found.
+            blob_name: The full path of the object to delete.
         """
         blob = self.bucket.blob(blob_name)
         blob.delete()
