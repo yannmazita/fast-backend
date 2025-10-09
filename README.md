@@ -1,28 +1,31 @@
 # fast-backend
 
-Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexguessr.com) for example uses this a basis.
+Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexguessr.com) for example uses this.
 
 ## Features
 
-- FastAPI backend
-- JWT tokens for route protection
-- Token refresh
-- Google OAuth integration
-- Apple OAuth integration (not tested)
-- PostgreSQL database (async access via asyncpg)
-- Full OAuth authorization module
+- FastAPI backend on Python 3.13
+- ** Database ** :
+    - PostgreSQL with SQLAlchemy 2.0
+    - Alembic database migrations
+    - Asynchronous support from the database (asyncpg) to the endpoints
+- ** Authentication and Authrorization ** :
+    - JWT tokens (access and refresh) stored in HttpOnly cookies
+    - Google OAuth 2.0 integration
+    - Apple OAuth 2.0 integration (not tested due to Apple requirements)
 - Straight-forward configuration in src.common.utils.settings and in non-commited .env file
+- Dockerized development database for easy setup.
 
 ## Todo
 
-- Internal account registration using external mail service
+- Internal email verification for internal accounts (would require external mail service)
 
 ## Getting Started
 
 ### Prerequisites
 1.  **Python 3.13**
 2.  **Poetry:** Install [Poetry](https://python-poetry.org/docs/#installation).
-3.  **Docker**
+3.  **Docker and Docker Compose**
 
 ### Setup
 
@@ -75,6 +78,13 @@ Currently, only the database is dockerized.
 
 2. Start FastAPI server:
 
+If it's the first start, run database migrations:
+
+```bash
+    alembic upgrade head
+```
+then start the server:
+
 ```bash
 python -m src.main
 ```
@@ -83,13 +93,19 @@ Auto-generated OpenAPI documentation `localhost:8080/docs#`.
 
 ## CI/CD
 
+This boilerplat is ready for containerization and deployment. 
+Here is a quick example CI/CD setup for GCP using GitHub Actions and Workload Identity Federation for secure, keyless authentication.
 
-- Create a GCP service account `backend-deployer-sa` with roles roles/artifactregistry.writer, roles/run.developer, roles/iam.serviceAccountUser, roles/storage.objectAdmin
-- Create a provider in a WIF pool (can use an existing one), don't forget to add a condition on repository name and main branch
-- Grant provider access to service account
-- Add role `Workload Identity User` to said access
+1. GCP
+    - Create a GCP service account `backend-deployer-sa` with roles roles/artifactregistry.writer, roles/run.developer, roles/iam.serviceAccountUser, roles/storage.objectAdmin
+    - Create a provider in a WIF pool (can use an existing one), don't forget to add a condition on repository name and main branch
+    - Grant provider access to service account
+    - Add role `Workload Identity User` to said access
 
-- Add secrets GCP_BACKEND_DEPLOYER_SA (email), GCP_PROJECT_ID, GCP_PROJECT_NUMBER, GCP_REGION, GCP_WIF_POOL_ID, GCP_WIF_PROVIDER_ID, TERRAFORM_STATE_BUCKET_NAME_SECRET
+2. GitHub secrets
+    - Add GitHub secrets GCP_BACKEND_DEPLOYER_SA (email), GCP_PROJECT_ID, GCP_PROJECT_NUMBER, GCP_REGION, GCP_WIF_POOL_ID, GCP_WIF_PROVIDER_ID, TERRAFORM_STATE_BUCKET_NAME_SECRET
+3. GitHub Actions workflow
+    a `.github/workflows/deploy.yml` would authenticate to GCP using WIF provider, build and tag the Docker image , push the image to Google Artifact Registry, deploy to Cloud Run then run `alembic upgrade head`
 
 ## Alembic
 
