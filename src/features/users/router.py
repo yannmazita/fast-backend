@@ -44,16 +44,14 @@ router = APIRouter(
 
 @router.get("/me", response_model=UserRead)
 async def get_own_user_endpoint(
-    session: Annotated[AsyncSession, Depends(get_session)],
     current_user: Annotated[
         User, Security(get_own_user, scopes=["::PROFILE::READ_SELF::"])
     ],
-    user_service: Annotated[UserService, Depends()],
 ):
     """
     Retrieves the profile of the currently authenticated user.
     """
-    return await user_service.get_user_with_rank(session, current_user)
+    return current_user
 
 
 async def _update_user(
@@ -64,7 +62,10 @@ async def _update_user(
 ) -> User:
     """Helper function to update a user's profile."""
     updated_user = user_to_update
-    if update_data.username is not None and update_data.username != user_to_update.username:
+    if (
+        update_data.username is not None
+        and update_data.username != user_to_update.username
+    ):
         updated_user = await user_service.update_username(
             session, user_to_update.id, update_data.username
         )
@@ -129,15 +130,13 @@ async def delete_own_user_endpoint(
     ],
     session: Annotated[AsyncSession, Depends(get_session)],
     user_repository: Annotated[UserRepository, Depends()],
-    user_service: Annotated[UserService, Depends()],
 ):
     """
     Allows the currently authenticated user to permanently delete their account.
     This action is irreversible.
     """
-    # First, prepare the response data while the user object still exists
-    # and its relations can be resolved to compute the rank.
-    user_to_return = await user_service.get_user_with_rank(session, current_user)
+    # First, prepare the response data while the user object still exists.
+    user_to_return = UserRead.model_validate(current_user)
     await user_repository.delete(session, current_user.id)
     return user_to_return
 
@@ -152,30 +151,13 @@ async def export_own_user_data_endpoint(
 ):
     """
     Exports all personal data for the currently authenticated user.
-    This includes profile information, linked OAuth accounts, ban history,
-    and detailed game session history.
+    This includes profile information, linked OAuth accounts, and ban history.
     """
     user_export_data = await user_service.export_user_data(session, current_user)
     return user_export_data
 
 
 # --- Admin/Moderator User Management Endpoints ---
-
-
-@router.post("/reset-all-stats", status_code=status.HTTP_204_NO_CONTENT)
-async def reset_all_player_stats(
-    token_data: Annotated[
-        TokenData, Security(validate_token, scopes=["::USERS::UPDATE_ANY::"])
-    ],
-    session: Annotated[AsyncSession, Depends(get_session)],
-    user_service: Annotated[UserService, Depends()],
-):
-    """
-    Resets all player stats (XP, MMR, etc.) to their default values.
-    This is a destructive operation and should be used with caution.
-    """
-    await user_service.reset_all_player_stats(session)
-    return
 
 
 @router.post(
@@ -252,13 +234,12 @@ async def delete_user_by_id_admin(
     ],
     session: Annotated[AsyncSession, Depends(get_session)],
     user_repository: Annotated[UserRepository, Depends()],
-    user_service: Annotated[UserService, Depends()],
 ):
     """
     Deletes a specific user by their ID.
     This action is irreversible. Requires administrator privileges.
     """
-    user_to_return = await user_service.get_user_with_rank(session, target_user)
+    user_to_return = UserRead.model_validate(target_user)
     await user_repository.delete(session, target_user.id)
 
     return user_to_return
@@ -282,9 +263,7 @@ async def get_all_users_admin(
     Requires administrator or appropriate moderator privileges.
     Returns a list of users and the total count of users.
     """
-    users, total_count = await user_service.get_all_users_with_rank(
-        session, offset, limit
-    )
+    users, total_count = await user_service.get_all_users(session, offset, limit)
     return users, total_count
 
 

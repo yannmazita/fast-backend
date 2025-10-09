@@ -61,9 +61,6 @@ class Settings(BaseSettings):
     disabled_account_cleanup_days: int = 30
     inactive_registered_account_cleanup_days: int = 365
 
-    # Games
-    websocket_timeout_seconds: float = 30
-
     # JWT
     access_token_expire_minutes: int = 60
     refresh_token_expire_minutes: int = 43200  # 30 days

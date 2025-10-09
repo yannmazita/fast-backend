@@ -1,6 +1,6 @@
 # fast-backend
 
-Boilerplate for a production-grade FastAPI backend. See [boilerplate-backend-vps](https://github.com/yannmazita/boilerplate-backend-vps) for a fitting Hetzner/GCS infrastructure boilerplate.
+Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexguessr.com) for example uses this a basis.
 
 ## Features
 

@@ -132,6 +132,12 @@ class UserService:
         logger.info(f"User ID: {user_id} is_active status set to {is_active}")
         return updated_user
 
+    async def get_all_users(
+        self, session: AsyncSession, offset: int = 0, limit: int = 100
+    ):
+        """Retrieves all users with pagination."""
+        return await self.user_repository.get_all(session, offset, limit)
+
     async def disable_account(self, session: AsyncSession, user_id: UUID) -> User:
         """User self-disables their account."""
         logger.info(f"User ID: {user_id} is attempting to self-disable account.")
