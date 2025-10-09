@@ -5,11 +5,11 @@ Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexgue
 ## Features
 
 - FastAPI backend on Python 3.13
-- ** Database ** :
+- **Database** :
     - PostgreSQL with SQLAlchemy 2.0
     - Alembic database migrations
     - Asynchronous support from the database (asyncpg) to the endpoints
-- ** Authentication and Authrorization ** :
+- **Authentication and Authrorization** :
     - JWT tokens (access and refresh) stored in HttpOnly cookies
     - Google OAuth 2.0 integration
     - Apple OAuth 2.0 integration (not tested due to Apple requirements)
