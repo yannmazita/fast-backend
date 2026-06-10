@@ -4,7 +4,7 @@ Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexgue
 
 ## Features
 
-- FastAPI backend on Python 3.13
+- FastAPI backend on Python 3.14
 - **Database** :
     - PostgreSQL with SQLAlchemy 2.0
     - Alembic database migrations
@@ -23,11 +23,13 @@ Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexgue
 ## Getting Started
 
 ### Prerequisites
-1.  **Python 3.13**
-2.  **Poetry:** Install [Poetry](https://python-poetry.org/docs/#installation).
-3.  **Docker and Docker Compose**
+1.  **Python 3.14**
+2.  **uv:** Install [uv](https://docs.astral.sh/uv/getting-started/installation/).
+3.  **Docker**
 
 ### Setup
+
+
 
 1. Start Postgres container:
 
@@ -57,8 +59,8 @@ docker compose exec postgres-dev bash
 List containers, remove database container, remove volume
 ```bash
 docker ps --all --format '{{.Names}}'
-docker rm fastbackend-backend-postgres-dev-1
-docker volume rm fastbackend-backend_pgdata-dev
+docker rm apexguessr-backend-postgres-dev-1
+docker volume rm apexguessr-backend_pgdata-dev
 ```
 
 Exec bash in container:
@@ -77,35 +79,28 @@ Currently, only the database is dockerized.
 </details>
 
 2. Start FastAPI server:
-
-If it's the first start, run database migrations:
-
+-  Manually update the environement then activate it before executing a command
 ```bash
-    alembic upgrade head
+uv sync
+source .venv/bin/activate
 ```
-then start the server:
+then
 
 ```bash
 python -m src.main
 ```
 
-Auto-generated OpenAPI documentation `localhost:8080/docs#`.
+Auto-generated OpenAPI documentation `localhost:8000/docs#`.
 
 ## CI/CD
 
-This boilerplat is ready for containerization and deployment. 
-Here is a quick example CI/CD setup for GCP using GitHub Actions and Workload Identity Federation for secure, keyless authentication.
 
-1. GCP
-    - Create a GCP service account `backend-deployer-sa` with roles roles/artifactregistry.writer, roles/run.developer, roles/iam.serviceAccountUser, roles/storage.objectAdmin
-    - Create a provider in a WIF pool (can use an existing one), don't forget to add a condition on repository name and main branch
-    - Grant provider access to service account
-    - Add role `Workload Identity User` to said access
+- Create a GCP service account `backend-deployer-sa` with roles roles/artifactregistry.writer, roles/run.developer, roles/iam.serviceAccountUser, roles/storage.objectAdmin
+- Create a provider in a WIF pool (can use an existing one), don't forget to add a condition on repository name and main branch
+- Grant provider access to service account
+- Add role `Workload Identity User` to said access
 
-2. GitHub secrets
-    - Add GitHub secrets GCP_BACKEND_DEPLOYER_SA (email), GCP_PROJECT_ID, GCP_PROJECT_NUMBER, GCP_REGION, GCP_WIF_POOL_ID, GCP_WIF_PROVIDER_ID, TERRAFORM_STATE_BUCKET_NAME_SECRET
-3. GitHub Actions workflow
-    a `.github/workflows/deploy.yml` would authenticate to GCP using WIF provider, build and tag the Docker image , push the image to Google Artifact Registry, deploy to Cloud Run then run `alembic upgrade head`
+- Add secrets GCP_BACKEND_DEPLOYER_SA (email), GCP_PROJECT_ID, GCP_PROJECT_NUMBER, GCP_REGION, GCP_WIF_POOL_ID, GCP_WIF_PROVIDER_ID, TERRAFORM_STATE_BUCKET_NAME_SECRET
 
 ## Alembic
 
@@ -131,3 +126,4 @@ when pushing (to main), the command is also ran on the prod database.
 | 6. Apply | The pipeline runs the committed migration script against the database. | CI/CD (Cloud Run) | Automated Process | alembic upgrade head |
 
 A migration script is source code. The commit that changes a model must also contain the migration script generated for that change. They are a single, atomic unit of work.
+
