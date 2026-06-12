@@ -2,6 +2,8 @@
 
 Boilerplate for a production-grade FastAPI backend. [ApexGuessr](https://apexguessr.com) for example uses this.
 
+See the more comprehensive [docs](https://github.com/yannmazita/fast-backend/tree/main/docs) directory for more information.
+
 ## Features
 
 - FastAPI backend on Python 3.14
