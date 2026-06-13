@@ -118,6 +118,8 @@ when pushing (to main), the command is also ran on the prod database.
 
 ## How to handle database changes
 
+Don't forget to import new models in ./alembic/env.py dedicated section.
+
 | Step | Action | Environment | Responsibility | Command |
 | --- | --- | --- | --- | --- |
 | 1. Code | Change a model (e.g., add a column). | Local Machine | Developer | (Code editor) |
