@@ -27,32 +27,40 @@ Schema = TypeVar("Schema", bound=BaseSchema)  # for future potential generic met
 
 
 class DatabaseRepository(Generic[Model, Schema]):
-    """
-    Repository for performing database queries.
+    """Generic repository for performing database operations on a model.
+
+    This class provides a set of common CRUD (Create, Read, Update, Delete)
+    operations for a given SQLAlchemy model.
 
     Attributes:
-        model: The model to be used for queries.
+        model: The SQLAlchemy model class this repository operates on.
     """
 
     def __init__(self, model: type[Model]) -> None:
+        """Initializes the DatabaseRepository.
+
+        Args:
+            model: The SQLAlchemy model class.
+        """
         self.model: type[Model] = model
 
     async def create(self, session: AsyncSession, data: dict[str, Any]) -> Model:
-        """
-        Create a new instance of the model in the database from a dictionary.
-        This method does not commit the transaction, allowing it to be used
-        in larger transactions in the service layer.
+        """Creates a new model instance in the database.
+
+        This method adds the instance to the session and flushes, but does
+        not commit the transaction.
 
         Args:
-            session: The database session to be used for queries.
-            data: A dictionary containing data for creation. Keys should
-                  correspond to model attribute names.
+            session: The database session.
+            data: A dictionary of data for the new instance.
+
         Returns:
-            The created instance.
+            The newly created model instance.
+
         Raises:
-            DuplicateResource: If a unique constraint is violated.
-            SQLAlchemyError: For other database errors.
-            AppException: For unexpected errors.
+            DuplicateResource: If creating the resource violates a unique
+                               constraint.
+            SQLAlchemyError: For other database-related errors.
         """
         try:
             # Instantiate the model directly from the dictionary
@@ -89,20 +97,19 @@ class DatabaseRepository(Generic[Model, Schema]):
     async def create_and_commit(
         self, session: AsyncSession, data: dict[str, Any]
     ) -> Model:
-        """
-        Create a new instance of the model in the database from a dictionary
-        and commits the transaction.
+        """Creates a new model instance and commits the transaction.
 
         Args:
-            session: The database session to be used for queries.
-            data: A dictionary containing data for creation. Keys should
-                  correspond to model attribute names.
+            session: The database session.
+            data: A dictionary of data for the new instance.
+
         Returns:
-            The created instance.
+            The newly created and refreshed model instance.
+
         Raises:
-            DuplicateResource: If a unique constraint is violated.
-            SQLAlchemyError: For other database errors.
-            AppException: For unexpected errors.
+            DuplicateResource: If creating the resource violates a unique
+                               constraint.
+            SQLAlchemyError: For other database-related errors.
         """
         instance = await self.create(session, data)
         await session.commit()
@@ -116,20 +123,20 @@ class DatabaseRepository(Generic[Model, Schema]):
         column: str = "id",
         with_for_update: bool = False,
     ) -> Model:
-        """
-        Get an instance of the model from the database.
+        """Retrieves a model instance by a specific attribute.
 
         Args:
-            session: The database session to be used for queries.
-            value: The value of the attribute to be used for filtering.
-            column: The column to be used for filtering.
-            with_for_update: Lock the row for update.
+            session: The database session.
+            value: The value of the attribute to filter by.
+            column: The name of the model's column attribute to filter on.
+            with_for_update: If True, locks the selected row for update.
+
         Returns:
-            The retrieved instance.
+            The found model instance.
+
         Raises:
-            ResourceNotFound: If no instance is found.
-            AppException: For multiple results or unexpected errors.
-            SQLAlchemyError: For database errors.
+            ResourceNotFound: If no instance is found with the given attribute.
+            SQLAlchemyError: For other database-related errors.
         """
         query = select(self.model).where(getattr(self.model, column) == value)
 
@@ -150,24 +157,23 @@ class DatabaseRepository(Generic[Model, Schema]):
         column: str = "id",
         none_replace: bool = False,
     ) -> Model:
-        """
-        Update an instance of the model in the database using a dictionary.
+        """Updates a model instance identified by a specific attribute.
 
         Args:
-            session: The database session to be used for queries.
-            data: A dictionary containing the attributes to update.
-                  Keys should correspond to model attribute names.
-            value: The value of the attribute to be used for filtering.
-            column: The column to be used for filtering.
-            none_replace: Whether to replace existing values with None if
-                          None is provided in the data dictionary.
+            session: The database session.
+            data: A dictionary of attributes to update.
+            value: The value of the attribute to identify the instance.
+            column: The name of the column attribute to identify the instance.
+            none_replace: If True, attributes with None values in `data` will
+                          be set to None in the database.
+
         Returns:
-            The updated instance.
+            The updated model instance.
+
         Raises:
             ResourceNotFound: If the instance to update is not found.
             DuplicateResource: If the update violates a unique constraint.
-            SQLAlchemyError: For other database errors.
-            AppException: For unexpected errors.
+            SQLAlchemyError: For other database-related errors.
         """
         # get_by_attribute will raise ResourceNotFound if not found
         instance = await self.get_by_attribute(
@@ -227,19 +233,20 @@ class DatabaseRepository(Generic[Model, Schema]):
     async def delete(
         self, session: AsyncSession, value: UUID | str, column: str = "id"
     ) -> Model:
-        """
-        Delete an instance of the model from the database.
+        """Deletes a model instance identified by a specific attribute.
 
         Args:
-            session: The database session to be used for queries.
-            value: The value of the attribute to be used for filtering.
-            column: The column to be used for filtering.
+            session: The database session.
+            value: The value of the attribute to identify the instance.
+            column: The name of the column attribute to identify the instance.
+
         Returns:
-            The deleted instance (data before deletion).
+            The model instance data before it was deleted.
+
         Raises:
             ResourceNotFound: If the instance to delete is not found.
-            SQLAlchemyError: For database errors (like  foreign key constraint).
-            AppException: For unexpected errors.
+            SQLAlchemyError: For database-related errors, such as foreign
+                             key violations.
         """
         instance = await self.get_by_attribute(session, value, column)
         try:
@@ -262,17 +269,19 @@ class DatabaseRepository(Generic[Model, Schema]):
             raise SQLAlchemyError("SQLAlchemy error occured during delete.") from e
 
     async def get_all(self, session: AsyncSession, offset: int = 0, limit: int = 100):
-        """
-        Get all instances of the model from the database with pagination.
+        """Retrieves all instances of the model with pagination.
+
         Args:
-            session: The database session to be used for queries.
-            offset: The number of instances to skip.
-            limit: The maximum number of instances to return.
+            session: The database session.
+            offset: The number of records to skip.
+            limit: The maximum number of records to return.
+
         Returns:
-            A tuple containing the list of instances and the total count.
+            A tuple containing a list of model instances and the total
+            count of all instances in the table.
+
         Raises:
-            SQLAlchemyError: For database errors.
-            AppException: For unexpected errors.
+            SQLAlchemyError: For database-related errors.
         """
         total_count_query = select(func.count()).select_from(self.model)
         total_count_response = await session.execute(total_count_query)
