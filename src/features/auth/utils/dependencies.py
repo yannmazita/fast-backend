@@ -32,6 +32,15 @@ async def validate_token(
     Does NOT perform comprehensive user status checks (active, banned, disabled) here.
     Those checks are delegated to other dependencies like `get_current_active_user`
     or service layers that use the user ID/username from this token data.
+
+    Returns:
+            Parsed token claims.
+    Raises:
+        HTTPException:
+            If a supplied token is invalid, expired, malformed, or
+            missing required claims.
+        PermissionDenied:
+            If the token does not contain all required scopes.
     """
     if token is None:
         # This case might be hit if oauth2_scheme is called on an optional token,
@@ -118,3 +127,36 @@ async def validate_token(
         )
 
     return token_data
+
+
+async def validate_token_optional(
+    security_scopes: SecurityScopes,
+    token: Annotated[str | None, Depends(oauth2_scheme)],
+) -> TokenData | None:
+    """
+    Optionally validates a JWT access token and returns its claims.
+
+    If no token is provided, returns None instead of raising an
+    authentication error. This is useful for endpoints that support
+    both authenticated and anonymous access.
+
+    If a token is provided, it must be valid, unexpired, and satisfy
+    any required OAuth scopes. Invalid or malformed tokens still result
+    in the appropriate authentication or authorization exception.
+
+    Returns:
+            Parsed token claims when a valid token is supplied,
+            otherwise None when no token is present.
+
+    Raises:
+        HTTPException:
+            If a supplied token is invalid, expired, malformed, or
+            missing required claims.
+        PermissionDenied:
+            If the token does not contain all required scopes.
+    """
+
+    if token is None:
+        return None
+    else:
+        return await validate_token(security_scopes, token)
