@@ -4,8 +4,8 @@ import httpx
 import asyncio
 from authlib.integrations.httpx_client import AsyncOAuth2Client
 from authlib.oauth2.rfc6749.errors import OAuth2Error
-from authlib.jose import JsonWebKey
 from authlib.oidc.core import UserInfo
+from joserfc.jwk import ECKey
 
 from src.common.utils.settings import settings
 from src.core.exceptions import AppException, InvalidCredentials
@@ -40,9 +40,7 @@ async def get_apple_oauth_client() -> AsyncOAuth2Client:
                     logger.error("Apple OAuth redirect URI not configured in settings.")
                     raise AppException("Apple OAuth redirect URI is missing.")
 
-                key = JsonWebKey.import_key(
-                    settings.apple_private_key, {"kty": "EC"}
-                )
+                key = ECKey.import_key(settings.apple_private_key)
 
                 client = AsyncOAuth2Client(
                     client_id=settings.apple_client_id,

@@ -1,6 +1,6 @@
 # src.common.database
 from contextlib import asynccontextmanager
-from typing import Any, AsyncIterator
+from typing import Any, AsyncGenerator
 
 from sqlalchemy.ext.asyncio import (
     AsyncConnection,
@@ -48,7 +48,7 @@ class DatabaseSessionManager:
         self._sessionmaker = None
 
     @asynccontextmanager
-    async def connect(self) -> AsyncIterator[AsyncConnection]:
+    async def connect(self) -> AsyncGenerator[AsyncConnection]:
         """Provides a database connection from the connection pool.
 
         This is a context manager that yields a connection and ensures it is
@@ -71,7 +71,7 @@ class DatabaseSessionManager:
                 raise
 
     @asynccontextmanager
-    async def session(self) -> AsyncIterator[AsyncSession]:
+    async def session(self) -> AsyncGenerator[AsyncSession]:
         """Provides a database session.
 
         This is a context manager that yields a session, handles rollback
@@ -101,7 +101,7 @@ sessionmanager = DatabaseSessionManager(
 )
 
 
-async def get_session() -> AsyncIterator[AsyncSession]:
+async def get_session() -> AsyncGenerator[AsyncSession]:
     """FastAPI dependency to get a database session.
 
     Yields:

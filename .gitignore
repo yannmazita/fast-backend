@@ -200,4 +200,7 @@ pyrightconfig.json
 
 # LLM
 digest.txt
+AGENTS.md
+CLAUDE.md
 GEMINI.md
+SYSTEM.md
