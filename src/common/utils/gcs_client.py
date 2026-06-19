@@ -1,14 +1,16 @@
 # src/common/utils/gcs_client
 from datetime import timedelta
+from urllib.parse import urlparse
 
 import structlog
 from google.auth import default as google_auth_default
 from google.auth.impersonated_credentials import Credentials as ImpersonatedCredentials
-from google.cloud.storage import Client, Bucket
 from google.cloud.exceptions import GoogleCloudError
+from google.cloud.storage import Bucket, Client
+from pydantic import HttpUrl
 
 from src.common.utils.settings import settings
-from src.core.exceptions import AppException
+from src.core.exceptions import AppException, BadRequestError
 
 logger = structlog.get_logger(__name__)
 
@@ -80,6 +82,18 @@ class GCSClient:
         logger.debug(f"Generated V4 presigned PUT URL for blob: {blob_name}")
         return url
 
+    def blob_exists(self, blob_name: str) -> bool:
+        """Checks if a blob exists in the bucket.
+
+        This method adds about 50-100ms per call to any operation
+        as it queries Google Cloud.
+
+        Args:
+            blob_name: The full path of the object to check.
+        """
+        blob = self.bucket.blob(blob_name)
+        return blob.exists()
+
     def delete_blob(self, blob_name: str):
         """Deletes a blob from the GCS bucket.
 
@@ -89,3 +103,32 @@ class GCSClient:
         blob = self.bucket.blob(blob_name)
         blob.delete()
         logger.info(f"Successfully deleted blob '{blob_name}' from GCS.")
+
+    def validate_and_extract_blob_name(self, image_url: HttpUrl) -> str:
+        """
+        Validates that an image URL points to this GCS bucket and extracts
+        the corresponding blob name.
+
+        Args:
+            image_url: The public GCS asset URL to validate.
+
+        Returns:
+            The GCS blob path extracted from the URL.
+
+        Raises:
+            BadRequestError: If the URL does not belong to the configured
+                GCS asset bucket.
+        """
+        expected = urlparse(settings.gcs_asset_url)
+        actual = urlparse(str(image_url))
+
+        if (
+            actual.scheme != expected.scheme
+            or actual.netloc != expected.netloc
+            or not actual.path.startswith(f"{expected.path}/")
+        ):
+            raise BadRequestError(
+                "Invalid image_url. Must be from the official upload bucket."
+            )
+
+        return actual.path.removeprefix(f"{expected.path}/")
