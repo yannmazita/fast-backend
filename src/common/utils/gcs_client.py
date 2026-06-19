@@ -132,3 +132,23 @@ class GCSClient:
             )
 
         return actual.path.removeprefix(f"{expected.path}/")
+
+    def resolve_existing_blob_from_image_url(self, image_url: HttpUrl) -> str:
+        """
+        Validates that an image URL belongs to the configured bucket and
+        ensures the referenced blob exists.
+
+        Returns:
+            The blob name.
+
+        Raises:
+            BadRequestError: If the URL is invalid or the blob does not exist.
+        """
+        blob_name = self.validate_and_extract_blob_name(image_url)
+
+        if not self.bucket.blob(blob_name).exists():
+            raise BadRequestError(
+                "Image file not found. Please upload the image using the provided signed URL first."
+            )
+
+        return blob_name
