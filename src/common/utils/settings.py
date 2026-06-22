@@ -38,6 +38,8 @@ class Settings(BaseSettings):
     uploads_custom_domain: HttpUrl | None = None
     frontend_gcs_base_url: HttpUrl = HttpUrl("https://storage.googleapis.com")
     gcs_signer_service_account_email: EmailStr | None = None
+    upload_url_expiration_minutes: int = 15
+    max_image_size: int = 10 * 1024 * 1024
 
     # API
     prod_api_base_url: HttpUrl | None = None  # ex: "https://api.supercoolapp.com"

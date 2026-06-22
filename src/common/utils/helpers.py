@@ -1,6 +1,9 @@
 # src.common.helpers
 from typing import Callable
 
+from src.core.exceptions import BadRequestError
+from src.core.types import ALLOWED_IMAGE_TYPES
+
 
 def compose(*functions: Callable) -> Callable:
     """
@@ -57,3 +60,18 @@ def pipe(*functions: Callable) -> Callable:
         return result
 
     return piped
+
+
+def get_extension_for_content_type(content_type: str) -> str:
+    """
+    Return the supported file extension for a MIME type.
+
+    Raises:
+        BadRequestError: If the content type is unsupported.
+    """
+    extension = ALLOWED_IMAGE_TYPES.get(content_type)
+
+    if not extension:
+        raise BadRequestError("Unsupported image type.")
+
+    return extension

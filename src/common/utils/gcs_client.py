@@ -1,16 +1,17 @@
 # src/common/utils/gcs_client
+from asyncio import to_thread
 from datetime import timedelta
 from urllib.parse import urlparse
 
+from google.api_core.retry import Retry
 import structlog
 from google.auth import default as google_auth_default
 from google.auth.impersonated_credentials import Credentials as ImpersonatedCredentials
-from google.cloud.exceptions import GoogleCloudError
 from google.cloud.storage import Bucket, Client
 from pydantic import HttpUrl
 
 from src.common.utils.settings import settings
-from src.core.exceptions import AppException, BadRequestError
+from src.core.exceptions import BadRequestError
 
 logger = structlog.get_logger(__name__)
 
@@ -72,27 +73,15 @@ class GCSClient:
             The V4 presigned URL.
         """
         blob = self.bucket.blob(blob_name)
-        # V4 signed URLs are the recommended version.
+
         url = blob.generate_signed_url(
             version="v4",
-            expiration=timedelta(minutes=15),  # URL is valid for 15 minutes
+            expiration=timedelta(minutes=settings.upload_url_expiration_minutes),
             method="PUT",
             content_type=content_type,
         )
         logger.debug(f"Generated V4 presigned PUT URL for blob: {blob_name}")
         return url
-
-    def blob_exists(self, blob_name: str) -> bool:
-        """Checks if a blob exists in the bucket.
-
-        This method adds about 50-100ms per call to any operation
-        as it queries Google Cloud.
-
-        Args:
-            blob_name: The full path of the object to check.
-        """
-        blob = self.bucket.blob(blob_name)
-        return blob.exists()
 
     def delete_blob(self, blob_name: str):
         """Deletes a blob from the GCS bucket.
@@ -122,6 +111,11 @@ class GCSClient:
         expected = urlparse(settings.gcs_asset_url)
         actual = urlparse(str(image_url))
 
+        blob_name = actual.path.removeprefix(f"{expected.path}/")
+
+        if not blob_name:
+            raise BadRequestError("Invalid image URL.")
+
         if (
             actual.scheme != expected.scheme
             or actual.netloc != expected.netloc
@@ -133,22 +127,42 @@ class GCSClient:
 
         return actual.path.removeprefix(f"{expected.path}/")
 
-    def resolve_existing_blob_from_image_url(self, image_url: HttpUrl) -> str:
+    async def validate_uploaded_image(
+        self,
+        image_url: HttpUrl,
+    ) -> str:
         """
-        Validates that an image URL belongs to the configured bucket and
-        ensures the referenced blob exists.
+        Validate an uploaded image URL and return its GCS blob name.
+
+        Ensures the URL belongs to the configured GCS asset bucket,
+        the object exists, and the uploaded file satisfies image constraints.
+
+        Args:
+            image_url: Public URL of the uploaded image.
 
         Returns:
-            The blob name.
+            The GCS blob name.
 
         Raises:
-            BadRequestError: If the URL is invalid or the blob does not exist.
+            BadRequestError:
+                If the URL is invalid, the object does not exist,
+                or the uploaded file does not meet validation rules.
         """
         blob_name = self.validate_and_extract_blob_name(image_url)
 
-        if not self.bucket.blob(blob_name).exists():
-            raise BadRequestError(
-                "Image file not found. Please upload the image using the provided signed URL first."
-            )
+        blob = self.bucket.blob(blob_name)
+
+        exists = await to_thread(lambda: blob.exists(retry=Retry(deadline=5)))
+
+        if not exists:
+            raise BadRequestError("Image file not found.")
+
+        await to_thread(lambda: blob.reload(retry=Retry(deadline=5)))
+
+        if not blob.content_type or not blob.content_type.startswith("image/"):
+            raise BadRequestError("Uploaded file is not an image.")
+
+        if blob.size and blob.size > settings.max_image_size:
+            raise BadRequestError("Image exceeds maximum size.")
 
         return blob_name
